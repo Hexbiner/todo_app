@@ -6,27 +6,52 @@ from django.contrib.auth.forms import UserCreationForm
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView
 from django.shortcuts import render, redirect
-from .models import TodoList, Category
+from .models import TodoList, Category, ArchiveList
+from datetime import datetime as dt
+from django.template import RequestContext
 
+def archive(request):
+    return render(request, "archive.html")
 
-def index(request): #the index view
-    todos = TodoList.objects.all() #quering all todos with the object manager
-    categories = Category.objects.all() #getting all categories with object manager
+def index(request):
+    todos = TodoList.objects.all()
+    archives = ArchiveList.objects.all()
+    categories = Category.objects.all()
 
-    if request.method == "POST": #checking if the request method is a POST
-        if "taskAdd" in request.POST: #checking if there is a request to add a todo
-            title = request.POST["description"] #title
-            date = str(request.POST["date"]) #date
-            category = request.POST["category_select"] #category
-            content = title + " -- " + date + " " + category #content
-            Todo = TodoList(title=title, content=content, due_date=date, category=Category.objects.get(name=category))
-            Todo.save() #saving the todo
-            return redirect("/") #reloading the page
+    if request.method == "POST":
+        if "categ" in request.POST:
+            catname = str(request.POST.get('categ'))
+            Cat = Category(name=catname)
+            Cat.save()
+            return redirect("/")
 
-        if "taskDelete" in request.POST: #checking if there is a request to delete a todo
-            checkedlist = request.POST["checkedbox"] #checked todos to be deleted
-            for todo_id in checkedlist:
-                todo = TodoList.objects.get(id=int(todo_id)) #getting todo id
-                todo.delete() #deleting todo
+    if request.method == "POST":
+        if "taskAdd" in request.POST:
+            title = request.POST["description"]
+            date = str(request.POST["date"])
+            category = request.POST["category_select"]
+            content = title + " -- " + date + " " + category
+            try:
+                Todo = TodoList(title=title, content=content, due_date=date, category=Category.objects.get(name=category))
+                Todo.save()
 
-    return render(request, "index.html", {"todos": todos, "categories":categories})
+                ArchiveTodo = ArchiveList(title=title, content=content, due_date=date, category=Category.objects.get(name=category))
+                ArchiveTodo.save()
+            except:
+                return redirect("/")
+            return redirect("/")
+
+        if "taskDelete" in request.POST:
+            try:
+                checkedlist = request.POST["checkedbox"]
+                for todo_id in checkedlist:
+                    todo = TodoList.objects.get(id=int(todo_id))
+                    todo.delete()
+
+                    archivetodo = ArchiveList.objects.get(id=int(todo_id))
+                    archivetodo.save()
+                    #return render(request, "archive.html")
+            except:
+                return redirect("/")
+
+    return render(request, "index.html", {"todos": todos, "categories": categories, "archives": archives})
